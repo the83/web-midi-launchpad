@@ -1,68 +1,10 @@
-/**
- * Representation of a single launchpad pad, containing X Y coordinates.
- */
-class Pad {
-	constructor(row, column) {
-		if (row < 1) {
-			row = 1;
-		}
-
-		if (row > 8) {
-			row = 8;
-		}
-
-		if (column < 1) {
-			column = 1;
-		}
-
-		if (column > 9) {
-			column = 9;
-		}
-
-		this.row = row;
-		this.column = column;
-	}
-
-	equals(otherPad) {
-		return this.row === otherPad.row && this.column === otherPad.column;
-	}
-}
-
-/**
- * Representation of a pad color, contains green and red values.
- */
-class Color {
-	constructor(green, red, flashing = false) {
-		if (green < 0) {
-			green = 0;
-		}
-
-		if (green > 3) {
-			green = 3;
-		}
-
-		if (red < 0) {
-			red = 0;
-		}
-
-		if (red > 3) {
-			red = 3;
-		}
-
-		this.green = green;
-		this.red = red;
-		this.flashing = flashing;
-	}
-
-	equals(otherColor) {
-		return this.green === otherColor.green && this.red === otherColor.red;
-	}
-}
-
+'use strict';
+const STATIC_COLOR = 144;
+const PULSING_COLOR = 146;
 /**
  * The main launchpad interface.
  */
-class Launchpad {
+export class Launchpad {
 	constructor(inputPort, outputPort) {
 		this.inputPort = inputPort;
 		this.outputPort = outputPort;
@@ -77,87 +19,31 @@ class Launchpad {
 		};
 	}
 
-	colorToVelocity(color) {
-		// TODO: double buffering
-		return (color.flashing ? 8 : 12) | (color.green << 4) | color.red;
-	}
-
 	// -- SENDING --
-
 	send(bytes) {
 		this.outputPort.send(bytes);
 	}
 
-	ledOn(pad, color) {
-		const row = pad.row,
-			column = pad.column;
-
-		const noteNumber = (row - 1) * 0x10 + (column - 1);
-
-		this.send([0x90, noteNumber, this.colorToVelocity(color)]);
+	ledOn(note, color, pulse = false) {
+    const colorType = pulse ? PULSING_COLOR : STATIC_COLOR;
+		this.send([colorType, note, color]);
 	}
 
-	ledOff(pad) {
-		const row = pad.row,
-			column = pad.column;
-
-		const noteNumber = (row - 1) * 0x10 + (column - 1);
-		this.send([0x80, noteNumber, 0x00]);
-	}
-
-	controlLedOn(column, color) {
-		if (column < 1) {
-			column = 1;
-		}
-
-		if (column > 8) {
-			column = 8;
-		}
-
-		const ccNumber = 0x67 + column;
-
-		this.send([0xb0, ccNumber, this.colorToVelocity(color)]);
-	}
-
-	controlLedOff(column) {
-		if (column < 1) {
-			column = 1;
-		}
-
-		if (column > 8) {
-			column = 8;
-		}
-
-		const ccNumber = 0x67 + column;
-		this.send([0xb0, ccNumber, 0x00]);
+	ledOff(note) {
+		this.send([0x80, note, 0x00]);
 	}
 
 	clear() {
-		this.send([0xb0, 0x00, 0x00]);
-	}
-
-	setXYMappingMode() {
-		this.send([0xb0, 0x00, 0x01]);
-	}
-
-	setDrumMappingMode() {
-		this.send([0xb0, 0x00, 0x02]);
-	}
-
-	enableFlashing() {
-		const flash = 0x08;
-		const doubleBufferConfig = 0x20 | flash;
-		this.send([0xb0, 0x00, doubleBufferConfig]);
-	}
-
-	disableFlashing() {
-		const flash = 0x00;
-		const doubleBufferConfig = 0x20 | flash;
-		this.send([0xb0, 0x00, doubleBufferConfig]);
+    for (let row = 1; row < 10; row++) {
+      for (let column = 1; column < 10; column++) {
+        const note = parseInt(column.toString() + row.toString());
+        const color = 4;
+        this.ledOff(note, color);
+      }
+    }
 	}
 
 	// -- RECEIVING --
-
 	handleMidiMessage(event) {
 		if (event.data.length !== 3) {
 			console.log('Unknown message received.', event.data);
@@ -172,15 +58,11 @@ class Launchpad {
 		}
 		else if (event.data[0] === 0x90 && event.data[2] === 0x7f) {
 			// Pad press
-			const row = Math.floor(event.data[1] / 0x10) + 1;
-			const column = event.data[1] % 0x10 + 1;
-			this.listeners.onPadPress.forEach(callback => callback(new Pad(row, column)));
+			this.listeners.onPadPress.forEach(callback => callback(event.data[1]));
 		}
 		else if (event.data[0] === 0x90 && event.data[2] === 0x0) {
 			// Pad release
-			const row = Math.floor(event.data[1] / 0x10) + 1;
-			const column = event.data[1] % 0x10 + 1;
-			this.listeners.onPadRelease.forEach(callback => callback(new Pad(row, column)));
+			this.listeners.onPadRelease.forEach(callback => callback(event.data[1]));
 		}
 	}
 
@@ -201,7 +83,7 @@ class Launchpad {
 	}
 };
 
-const autoDetectLaunchpad = (midiAccess, name = 'launchpad') => {
+export const autoDetectLaunchpad = (midiAccess, name = 'launchpad') => {
 	let launchpadInput = null,
 		launchpadOutput = null;
 
@@ -225,3 +107,5 @@ const autoDetectLaunchpad = (midiAccess, name = 'launchpad') => {
 		return new Launchpad(launchpadInput, launchpadOutput);
 	}
 };
+
+export default autoDetectLaunchpad;

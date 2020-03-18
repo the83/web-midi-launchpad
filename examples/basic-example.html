@@ -16,21 +16,18 @@
 		launchpad.clear();
 
 		// Enable flashing
-		launchpad.enableFlashing();
 
 		// Set all normal LED's to flashing green
-		for (let row = 1; row < 9; row++) {
-			for (let column = 1; column < 10; column++) {
-				launchpad.ledOn(new Pad(row, column), new Color(3, 0, true));
-			}
-		}
+		<!-- for (let row = 1; row < 10; row++) { -->
+			<!-- for (let column = 1; column < 10; column++) { -->
+        <!-- const note = parseInt(column.toString() + row.toString()); -->
+        <!-- const color = 4; -->
+				<!-- launchpad.ledOn(note, color); -->
+			<!-- } -->
+		<!-- } -->
 
-		// After 2 seconds, disable flashing
-		setTimeout(() => {
-			launchpad.disableFlashing();
-		}, 2000);
-
-		launchpad.onPadPress(pad => console.log(pad));
+		<!-- launchpad.onPadPress(pad => console.log(pad)); -->
+    window.launchpad = launchpad;
 	}
 
 	function onMIDIFailure(msg) {
